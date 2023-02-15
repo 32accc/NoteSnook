@@ -97,15 +97,6 @@ function Header(props) {
           )}
         </Flex>
         <Flex sx={{ flexShrink: 0 }}>
-          {buttons?.search && (
-            <Icon.Search
-              data-test-id={"open-search"}
-              size={24}
-              title={buttons.search.title}
-              onClick={() => navigate(`/search/${type}`)}
-            />
-          )}
-
           {!isMobile && createButtonData && (
             <Icon.Plus
               data-test-id={`${type}-action-button`}

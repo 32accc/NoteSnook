@@ -212,13 +212,13 @@ const routes = {
       }
     };
   },
-  "/search/:type": ({ type }) => ({
+  "/search": () => ({
     type: "search",
     title: "Search",
-    component: <Search type={type} />,
+    component: <Search />,
     buttons: {
       back: {
-        title: `Go back to ${type}`,
+        title: `Go back to test`,
         action: () => window.history.back()
       }
     }
