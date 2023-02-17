@@ -25,13 +25,8 @@ import { MainInput } from "./maininput";
 import { hexToRGB } from "../../utils/color";
 import { FilterInput } from "./filterinput";
 import { Button, Flex } from "@theme-ui/components";
-import { mainSearchEngine, filterItems } from "./search";
+import { mainSearchEngine, filterItems, filterSearchEngine } from "./search";
 
-/*
-#bugs
-note filter bug when enter is pressed
-definitions delete bug
- */
 function SearchBox({ onSearch }) {
   let filterSuggestions = getSuggestionArray(Object.keys(Filters));
 
@@ -42,8 +37,10 @@ function SearchBox({ onSearch }) {
   const [previousFocus, setPreviousFocus] = useState([]);
 
   const focusInput = (index) => {
+    const cursorAtZero = getCursorPosition(document.activeElement) === 0;
     if (filters[index]) {
       document.getElementById(`inputId_${index}`).focus();
+      if (cursorAtZero) moveCursorToEnd(index);
     } else {
       document.getElementById("general_input").focus();
     }
@@ -140,8 +137,6 @@ function SearchBox({ onSearch }) {
               }}
               onFocus={(e) => {
                 inputRef.current = e;
-                inputRef.current.input = item.input;
-                inputRef.current.filter = e;
                 setPreviousFocus([
                   previousFocus[1],
                   { id: e.target.id, index }
@@ -149,8 +144,9 @@ function SearchBox({ onSearch }) {
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
+                  addDefinition(filters, definitions.current);
                   if (selectionIndex > -1)
-                    e.target.textContent =
+                    e.target.innerText =
                       suggestions[selectionIndex].col1 +
                       suggestions[selectionIndex].col2;
                 }
@@ -201,10 +197,16 @@ function SearchBox({ onSearch }) {
             }}
           />
           <Button
-            onClick={() => {
-              const maininputValue =
-                document.getElementById("general_input").value;
-              onSearch(maininputValue);
+            onClick={async () => {
+              if (filters.length > 0) {
+                addDefinition(filters, definitions.current);
+                let results = await filterSearchEngine(definitions.current);
+                onSearch(results);
+              } else {
+                const maininputValue =
+                  document.getElementById("general_input").value;
+                onSearch(maininputValue);
+              }
               //onEnter(maininputValue, filters, onSearch, filterDefinitions);
             }}
             type="button"
@@ -266,7 +268,7 @@ function SearchBox({ onSearch }) {
               bg={selectionIndex === index ? "hover" : "transparent"}
               onClick={() => {
                 if (item.isFilterFocused) {
-                  inputRef.current.target.textContent = item.col1;
+                  inputRef.current.target.innerText = item.col1;
                 } else {
                   inputRef.current.target.value = item.col1 + item.col2;
                   addFilter(item.col1 + item.col2, setFilters);
@@ -283,22 +285,62 @@ function SearchBox({ onSearch }) {
 }
 export default SearchBox;
 
-const addDefinition = (input, definitions) => {
-  //hard to understand// minimize if else
-  //for (let filter of filters) console.log(filter.input.state.result);
-  if (input.state.result) {
-    let isArrayEmpty = false;
-    for (let index = 0; index < definitions.length; index++) {
-      if (definitions[index].srNo === input.id) {
-        isArrayEmpty = true;
-        input.state.result.srNo = input.id;
-        definitions[index] = input.state.result;
+const moveCursorToEnd = (index) => {
+  var el = document.getElementById(`inputId_${index}`);
+  var range = document.createRange();
+  var sel = window.getSelection();
+
+  range.setStart(el.childNodes[0], el.childNodes[0].textContent.length);
+  range.collapse(true);
+
+  sel.removeAllRanges();
+  sel.addRange(range);
+};
+
+const getCursorPosition = (editableDiv) => {
+  //it is a general method, it should be somehwre else
+  var caretPos = 0,
+    sel,
+    range;
+  if (window.getSelection) {
+    sel = window.getSelection();
+    if (sel.rangeCount) {
+      range = sel.getRangeAt(0);
+      if (range.commonAncestorContainer.parentNode == editableDiv) {
+        caretPos = range.endOffset;
       }
     }
+  } else if (document.selection && document.selection.createRange) {
+    range = document.selection.createRange();
+    if (range.parentElement() == editableDiv) {
+      var tempEl = document.createElement("span");
+      editableDiv.insertBefore(tempEl, editableDiv.firstChild);
+      var tempRange = range.duplicate();
+      tempRange.moveToElementText(tempEl);
+      tempRange.setEndPoint("EndToEnd", range);
+      caretPos = tempRange.text.length;
+    }
+  }
+  return caretPos;
+};
 
-    if (!isArrayEmpty) {
-      input.state.result.srNo = input.id;
-      definitions.push(input.state.result);
+const addDefinition = (filters, definitions) => {
+  for (let filter of filters) {
+    let input = filter.input;
+    if (input.state.result) {
+      let isArrayEmpty = false;
+      for (let index = 0; index < definitions.length; index++) {
+        if (definitions[index].srNo === input.id) {
+          isArrayEmpty = true;
+          input.state.result.srNo = input.id;
+          definitions[index] = input.state.result;
+        }
+      }
+
+      if (!isArrayEmpty) {
+        input.state.result.srNo = input.id;
+        definitions.push(input.state.result);
+      }
     }
   }
 };
