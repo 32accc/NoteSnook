@@ -287,14 +287,14 @@ export default SearchBox;
 
 const moveCursorToEnd = (index) => {
   var el = document.getElementById(`inputId_${index}`);
-  var range = document.createRange();
-  var sel = window.getSelection();
-
-  range.setStart(el.childNodes[0], el.childNodes[0].textContent.length);
-  range.collapse(true);
-
-  sel.removeAllRanges();
-  sel.addRange(range);
+  if (el.childNodes[0]) {
+    var range = document.createRange();
+    var sel = window.getSelection();
+    range.setStart(el?.childNodes[0], el.childNodes[0].textContent.length);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
 };
 
 const getCursorPosition = (editableDiv) => {
