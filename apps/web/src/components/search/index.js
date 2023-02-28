@@ -25,7 +25,8 @@ import { MainInput } from "./maininput";
 import { hexToRGB } from "../../utils/color";
 import { FilterInput } from "./filterinput";
 import { Button, Flex } from "@theme-ui/components";
-import { mainSearchEngine, filterItems, filterSearchEngine } from "./search";
+import { db } from "../../common/db";
+import { filter, parse } from "liqe";
 
 function SearchBox({ onSearch }) {
   let filterSuggestions = getSuggestionArray(Object.keys(Filters));
@@ -113,7 +114,7 @@ function SearchBox({ onSearch }) {
                 py: "2.5px"
               }}
             >
-              {item.label.type + ":"}
+              {item.label.filterName + ":"}
             </Button>
             <FilterInput
               moveSelection={moveSelection}
@@ -144,7 +145,11 @@ function SearchBox({ onSearch }) {
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  addDefinition(filters, definitions.current);
+                  addDefinition(
+                    filters,
+                    definitions.current,
+                    e.target.innerText
+                  );
                   if (selectionIndex > -1)
                     e.target.innerText =
                       suggestions[selectionIndex].col1 +
@@ -199,8 +204,12 @@ function SearchBox({ onSearch }) {
           <Button
             onClick={async () => {
               if (filters.length > 0) {
-                addDefinition(filters, definitions.current);
-                let results = await filterSearchEngine(definitions.current);
+                addDefinition(
+                  filters,
+                  definitions.current,
+                  inputRef.current.target.innerText
+                );
+                let results = await db.search.filters(definitions.current);
                 onSearch(results);
               } else {
                 const maininputValue =
@@ -324,22 +333,34 @@ const getCursorPosition = (editableDiv) => {
   return caretPos;
 };
 
-const addDefinition = (filters, definitions) => {
+const definitionTemplate = {
+  filterName: undefined,
+  query: "",
+  srNo: -1
+};
+
+const addDefinition = (filters, definitions, query) => {
+  //add definition and checkError are interwined.
+  //They must be unmerged from eachother so that the code becomes clear
   for (let filter of filters) {
     let input = filter.input;
-    if (input.state.result) {
+    if (!input.error) {
       let isArrayEmpty = false;
       for (let index = 0; index < definitions.length; index++) {
         if (definitions[index].srNo === input.id) {
           isArrayEmpty = true;
-          input.state.result.srNo = input.id;
-          definitions[index] = input.state.result;
+          definitionTemplate.filterName = input.filterName;
+          definitionTemplate.query = query;
+          definitionTemplate.srNo = input.id;
+          definitions[index] = definitionTemplate; //make definition
         }
       }
 
       if (!isArrayEmpty) {
-        input.state.result.srNo = input.id;
-        definitions.push(input.state.result);
+        definitionTemplate.filterName = input.filterName;
+        definitionTemplate.query = query;
+        definitionTemplate.srNo = input.id;
+        definitions.push(definitionTemplate); //definition should be made here not gotten from somewhere else
       }
     }
   }
@@ -388,20 +409,20 @@ const moveSelection = (suggestions, setSelectionIndex) => ({
   }
 });
 
-const filterTemplate = (type, index = -1) => {
+const filterTemplate = (filterName, index = -1) => {
   return {
-    label: { type: type },
+    label: { filterName: filterName },
     input: {
-      type: type,
+      filterName: filterName,
       isDateFilter: false,
       hasSuggestions: false,
       comments: "",
       date: { formatted: getCurrentDate() },
       isCalenderOpen: true,
-      state: { error: false, message: "", result: undefined },
+      error: false,
+      query: "",
       id: `inputId_${index}`
-    },
-    definition: {}
+    }
   };
 };
 
@@ -452,13 +473,13 @@ function getCurrentDate() {
   return currentDate;
 }
 
-const getSuggestions = async (query, filter, searchHistory) => {
+const getSuggestions = async (query, input, searchHistory) => {
   let suggestions = [];
   let dummy = [];
-  if (filter) {
-    if (filter.hasSuggestions) {
-      let searchResults = await mainSearchEngine(filter.type, query);
-      let result = query === "" ? searchResults.allData : searchResults.result;
+  if (input) {
+    if (input.hasSuggestions) {
+      let searchResults = await db.search.filter(input.filterName, query);
+      let result = query === "" ? searchResults.data : searchResults.result;
       result.map((item, index) => {
         dummy[index] = item.title;
       });
@@ -480,6 +501,23 @@ const getSuggestions = async (query, filter, searchHistory) => {
   }
   return suggestions;
 };
+
+export function filterItems(query, items) {
+  //naming is wrong
+  //this is fetch suggestions search
+  try {
+    return filter(
+      parse(`text:"${query.toLowerCase()}"`),
+      items.map((item) => {
+        return { item, text: item.query };
+      })
+    ).map((v) => {
+      return v.item.query;
+    });
+  } catch {
+    return [];
+  }
+}
 
 const arrangeAlphabetically = (array) => {
   //name can be shortened?
