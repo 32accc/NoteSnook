@@ -26,7 +26,7 @@ import { hexToRGB } from "../../utils/color";
 import { FilterInput } from "./filterinput";
 import { Button, Flex } from "@theme-ui/components";
 import { db } from "../../common/db";
-import { filter, parse } from "liqe";
+import dayjs from "dayjs";
 
 function SearchBox({ onSearch }) {
   let filterSuggestions = getSuggestionArray(Object.keys(Filters));
@@ -72,9 +72,7 @@ function SearchBox({ onSearch }) {
     >
       <Flex
         sx={{
-          //flexDirection: "row",
           flexWrap: "wrap",
-          //alignItems: "center",
           mt: 1,
           boxShadow: "0px 0px 0px 1px var(--border) inset",
           borderRadius: "default",
@@ -117,6 +115,7 @@ function SearchBox({ onSearch }) {
               {item.label.filterName + ":"}
             </Button>
             <FilterInput
+              getCursorPosition={getCursorPosition}
               moveSelection={moveSelection}
               getSuggestions={getSuggestions}
               focusInput={focusInput}
@@ -151,9 +150,7 @@ function SearchBox({ onSearch }) {
                     e.target.innerText
                   );
                   if (selectionIndex > -1)
-                    e.target.innerText =
-                      suggestions[selectionIndex].col1 +
-                      suggestions[selectionIndex].col2;
+                    e.target.innerText = suggestions[selectionIndex].filter;
                 }
               }}
               open={filters[index].input.isCalenderOpen}
@@ -196,8 +193,8 @@ function SearchBox({ onSearch }) {
               if (e.key === "Enter") {
                 if (selectionIndex > -1)
                   e.target.value =
-                    suggestions[selectionIndex].col1 +
-                    suggestions[selectionIndex].col2;
+                    suggestions[selectionIndex].main1 +
+                    suggestions[selectionIndex].main2;
               }
             }}
           />
@@ -276,11 +273,11 @@ function SearchBox({ onSearch }) {
               item={item}
               bg={selectionIndex === index ? "hover" : "transparent"}
               onClick={() => {
-                if (item.isFilterFocused) {
-                  inputRef.current.target.innerText = item.col1;
+                if (item.filter) {
+                  inputRef.current.target.innerText = item.filter;
                 } else {
-                  inputRef.current.target.value = item.col1 + item.col2;
-                  addFilter(item.col1 + item.col2, setFilters);
+                  inputRef.current.target.value = item.main1 + item.main2;
+                  addFilter(item.main1 + item.main2, setFilters);
                 }
                 inputRef.current.target.focus();
                 setSuggestions([]);
@@ -340,8 +337,6 @@ const definitionTemplate = {
 };
 
 const addDefinition = (filters, definitions, query) => {
-  //add definition and checkError are interwined.
-  //They must be unmerged from eachother so that the code becomes clear
   for (let filter of filters) {
     let input = filter.input;
     if (!input.error) {
@@ -371,19 +366,21 @@ const addFilter = (searchQuery, setFilters) => {
   if (isFilter) {
     Object.keys(Filters).map((item) => {
       if (searchQuery.includes(item)) {
-        rewriteMainInput(searchQuery, item);
+        document.getElementById("general_input").value = "";
         setFilters((_filters) => {
-          return [..._filters, Filters[item](_filters.length)];
+          let filter = Filters[item](_filters.length);
+          filter.input.query = filterQuery(searchQuery);
+          console.log(filterQuery(searchQuery), filter);
+          return [..._filters, filter];
         });
       }
     });
   }
 };
 
-const rewriteMainInput = (query, searchTerm) => {
-  let splitInputText = query.split(searchTerm);
-  let remainingString = String(splitInputText[0]); //to be continued
-  document.getElementById("general_input").value = remainingString;
+const filterQuery = (query) => {
+  let splitInput = query.split(":");
+  return splitInput[1];
 };
 
 const moveSelection = (suggestions, setSelectionIndex) => ({
@@ -416,7 +413,6 @@ const filterTemplate = (filterName, index = -1) => {
       filterName: filterName,
       isDateFilter: false,
       hasSuggestions: false,
-      comments: "",
       date: { formatted: getCurrentDate() },
       isCalenderOpen: true,
       error: false,
@@ -465,85 +461,32 @@ const Filters = {
   }
 };
 
-function getCurrentDate() {
-  let date = new Date();
-  let currentDate = `${date.getDate()}/${
-    date.getMonth() + 1
-  }/${date.getFullYear()}`;
-  return currentDate;
-}
-
-const getSuggestions = async (query, input, searchHistory) => {
-  let suggestions = [];
+const getSuggestions = async (query, filterInput) => {
   let dummy = [];
-  if (input) {
-    if (input.hasSuggestions) {
-      let searchResults = await db.search.filter(input.filterName, query);
+  if (filterInput) {
+    if (filterInput.hasSuggestions) {
+      let searchResults = await db.search.filter(filterInput.filterName, query);
       let result = query === "" ? searchResults.data : searchResults.result;
       result.map((item, index) => {
         dummy[index] = item.title;
       });
     }
-    suggestions = getSuggestionArray(dummy, undefined, true);
+    return getSuggestionArray(dummy, undefined, true);
   } else {
-    let searchSuggestions = getSuggestionArray(
-      Object.keys(Filters),
-      query,
-      false
-    );
-    let historySuggestions = getSuggestionArray(
-      filterItems(query, searchHistory)
-    );
-
-    dummy.push(...searchSuggestions);
-    dummy.push(...historySuggestions);
-    suggestions.push(...arrangeAlphabetically(dummy));
+    return getSuggestionArray(Object.keys(Filters), query, false);
   }
-  return suggestions;
 };
 
-export function filterItems(query, items) {
-  //naming is wrong
-  //this is fetch suggestions search
-  try {
-    return filter(
-      parse(`text:"${query.toLowerCase()}"`),
-      items.map((item) => {
-        return { item, text: item.query };
-      })
-    ).map((v) => {
-      return v.item.query;
-    });
-  } catch {
-    return [];
-  }
+function getSuggestionArray(array, query = "", isFilter = false) {
+  return array.map((item) => {
+    return {
+      main1: !isFilter && item + ":",
+      main2: !isFilter && query,
+      filter: isFilter && item
+    };
+  });
 }
 
-const arrangeAlphabetically = (array) => {
-  //name can be shortened?
-  array.sort(function (a, b) {
-    var textA = a.col1.toUpperCase();
-    var textB = b.col1.toUpperCase();
-    return textA < textB ? -1 : textA > textB ? 1 : 0;
-  });
-  return array;
-};
-
-function getSuggestionArray(array, query = "", isFilterFocused = false) {
-  //getSuggestionString, name is not right
-  let suggestionArray = [];
-  array.map((item) => {
-    suggestionArray.push({
-      col1: isFilterFocused ? item : item + ":",
-      col2: getColumn2(isFilterFocused, item, query),
-      isFilterFocused
-    });
-  });
-  return suggestionArray;
-}
-
-function getColumn2(isFilterFocused, item, query) {
-  if (isFilterFocused) return "";
-  if (query === "") return Filters[item]().input.comments;
-  return query;
+function getCurrentDate() {
+  return dayjs().format("DD/MM/YYYY");
 }

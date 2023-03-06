@@ -24,7 +24,6 @@ import { db } from "../common/db";
 import SearchBox from "../components/search";
 import ProgressBar from "../components/progress-bar";
 import { useStore as useNoteStore } from "../stores/note-store";
-import { filterItemsToType } from "../components/search/search";
 import { Text, Button, Flex } from "@theme-ui/components";
 
 const filters = ["notes", "notebooks", "topics", "tags"];
@@ -60,10 +59,7 @@ function Search() {
             let array = [];
             let totalItems = 0;
             for (let filter of filters) {
-              const [lookupType, items] = await filterItemsToType(
-                filter,
-                context
-              );
+              const [lookupType, items] = await db.search.getFilterData(filter);
               totalItems = totalItems + items.length;
               setSearchState({ isSearching: true, totalItems: totalItems });
               const result = await db.lookup[lookupType](items, query);
