@@ -35,7 +35,8 @@ import {
   Login,
   Circle,
   Icon,
-  Reminders
+  Reminders,
+  Search
 } from "../icons";
 import { AnimatedFlex } from "../animated";
 import NavigationItem from "./navigation-item";
@@ -95,7 +96,12 @@ const routes: Route[] = [
     icon: Reminders,
     tag: "Beta"
   },
-  { title: "Trash", path: "/trash", icon: Trash }
+  { title: "Trash", path: "/trash", icon: Trash },
+  {
+    title: "Search",
+    path: "/search",
+    icon: Search
+  }
 ];
 
 const settings: Route = {
