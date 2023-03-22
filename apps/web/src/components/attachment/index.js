@@ -33,6 +33,7 @@ import {
 } from "../../common/dialog-controller";
 import { hashNavigate } from "../../navigation";
 import { showToast } from "../../utils/toast";
+import { store as selectionStore } from "../../stores/selection-store";
 
 const workStatusMap = {
   recheck: "Rechecking...",
@@ -54,6 +55,14 @@ function Attachment({ item, isCompact, index }) {
       menu={{
         items: menuItems,
         extraData: { attachment }
+      }}
+      onKeyPress={async (e) => {
+        if (e.key === "Delete") {
+          let selectedItems = selectionStore
+            .get()
+            .selectedItems.filter((i) => i.type === item.type && i !== item);
+          await Multiselect.deleteAttachments([item, ...selectedItems]);
+        }
       }}
       onClick={() => {
         if (isCompact) showAttachmentsDialog();

@@ -27,6 +27,7 @@ import * as Icon from "../icons";
 import { Multiselect } from "../../common/multi-select";
 import { pluralize } from "../../utils/string";
 import { confirm } from "../../common/dialog-controller";
+import { store as selectionStore } from "../../stores/selection-store";
 
 function Topic({ item, index, onClick }) {
   const { id, notebookId } = item;
@@ -41,6 +42,14 @@ function Topic({ item, index, onClick }) {
       item={topic}
       onClick={onClick}
       title={topic.title}
+      onKeyPress={async (e) => {
+        if (e.key === "Delete") {
+          let selectedItems = selectionStore
+            .get()
+            .selectedItems.filter((i) => i.type === item.type && i !== item);
+          await deleteTopics([item, ...selectedItems], notebookId);
+        }
+      }}
       footer={
         <Flex
           sx={{
@@ -89,24 +98,28 @@ const menuItems = [
     color: "error",
     iconColor: "error",
     onClick: async ({ items, notebookId }) => {
-      const phrase = items.length > 1 ? "this topic" : "these topics";
-      const shouldDeleteNotes = await confirm({
-        title: `Delete notes in ${phrase}?`,
-        message: `These notes will be moved to trash and permanently deleted after 7 days.`,
-        yesText: `Yes`,
-        noText: "No"
-      });
-
-      if (shouldDeleteNotes) {
-        const notes = [];
-        for (const item of items) {
-          const topic = db.notebooks.notebook(notebookId).topics.topic(item.id);
-          notes.push(...topic.all);
-        }
-        await Multiselect.moveNotesToTrash(notes, false);
-      }
-      await Multiselect.deleteTopics(notebookId, items);
+      await deleteTopics(items, notebookId);
     },
     multiSelect: true
   }
 ];
+
+async function deleteTopics(items, notebookId) {
+  const phrase = items.length > 1 ? "this topic" : "these topics";
+  const shouldDeleteNotes = await confirm({
+    title: `Delete notes in ${phrase}?`,
+    message: `These notes will be moved to trash and permanently deleted after 7 days.`,
+    yesText: `Yes`,
+    noText: "No"
+  });
+
+  if (shouldDeleteNotes) {
+    const notes = [];
+    for (const item of items) {
+      const topic = db.notebooks.notebook(notebookId).topics.topic(item.id);
+      notes.push(...topic.all);
+    }
+    await Multiselect.moveNotesToTrash(notes, false);
+  }
+  await Multiselect.deleteTopics(notebookId, items);
+}

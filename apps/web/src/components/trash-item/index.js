@@ -28,6 +28,7 @@ import { showUndoableToast } from "../../common/toasts";
 import { showToast } from "../../utils/toast";
 import { hashNavigate } from "../../navigation";
 import { useStore } from "../../stores/note-store";
+import { store as selectionStore } from "../../stores/selection-store";
 
 function TrashItem({ item, index, date }) {
   const isOpened = useStore((store) => store.selectedNote === item.id);
@@ -39,6 +40,14 @@ function TrashItem({ item, index, date }) {
       item={item}
       title={item.title}
       body={item.headline || item.description}
+      onKeyPress={async (e) => {
+        if (e.key === "Delete") {
+          let selectedItems = selectionStore
+            .get()
+            .selectedItems.filter((i) => i.type === item.type && i !== item);
+          await deleteTrash([item, ...selectedItems]);
+        }
+      }}
       index={index}
       footer={
         <Flex mt={1} sx={{ fontSize: "subBody", color: "fontTertiary" }}>
@@ -80,15 +89,19 @@ const menuItems = [
     color: "error",
     iconColor: "error",
     onClick: async ({ items }) => {
-      if (!(await showMultiPermanentDeleteConfirmation(items.length))) return;
-      const ids = items.map((i) => i.id);
-      showUndoableToast(
-        `${pluralize(items.length, "item", "items")} permanently deleted`,
-        () => store.delete(ids),
-        () => store.delete(ids, true),
-        () => store.refresh()
-      );
+      await deleteTrash(items);
     },
     multiSelect: true
   }
 ];
+
+async function deleteTrash(items) {
+  if (!(await showMultiPermanentDeleteConfirmation(items.length))) return;
+  const ids = items.map((i) => i.id);
+  showUndoableToast(
+    `${pluralize(items.length, "item", "items")} permanently deleted`,
+    () => store.delete(ids),
+    () => store.delete(ids, true),
+    () => store.refresh()
+  );
+}

@@ -32,6 +32,7 @@ import { Multiselect } from "../../common/multi-select";
 import { store } from "../../stores/reminder-store";
 import { db } from "../../common/db";
 import { showEditReminderDialog } from "../../common/dialog-controller";
+import { store as selectionStore } from "../../stores/selection-store";
 
 const RECURRING_MODE_MAP = {
   week: "Weekly",
@@ -64,6 +65,16 @@ function Reminder({
       body={reminder.description}
       isDisabled={reminder.disabled}
       isSimple={simplified}
+      onKeyPress={async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Delete") {
+          const selectedItems = selectionStore
+            .get()
+            .selectedItems.filter(
+              (i: any) => i.type === item.type && i !== item
+            );
+          await Multiselect.moveRemindersToTrash([item, ...selectedItems]);
+        }
+      }}
       onClick={() => showEditReminderDialog(reminder.id)}
       footer={
         <Flex

@@ -28,6 +28,7 @@ import { db } from "../../common/db";
 import * as Icon from "../icons";
 import { showToast } from "../../utils/toast";
 import { pluralize } from "../../utils/string";
+import { store as selectionStore } from "../../stores/selection-store";
 
 const menuItems = [
   {
@@ -52,14 +53,7 @@ const menuItems = [
     title: "Delete",
     icon: Icon.DeleteForver,
     onClick: async ({ items }) => {
-      for (let tag of items) {
-        if (tag.noteIds.includes(editorStore.get().session.id))
-          await editorStore.clearSession();
-        await db.tags.remove(tag.id);
-      }
-      showToast("success", `${pluralize(items.length, "tag", "tags")} deleted`);
-      tagStore.refresh();
-      noteStore.refresh();
+      await deleteTags(items);
     },
     multiSelect: true
   }
@@ -73,6 +67,14 @@ function Tag({ item, index }) {
       selectable={false}
       index={index}
       title={<TagNode title={alias} />}
+      onKeyPress={async (e) => {
+        if (e.key === "Delete") {
+          let selectedItems = selectionStore
+            .get()
+            .selectedItems.filter((i) => i.type === item.type && i !== item);
+          await deleteTags([item, ...selectedItems]);
+        }
+      }}
       footer={
         <Text mt={1} variant="subBody">
           {noteIds.length} notes
@@ -96,4 +98,15 @@ function TagNode({ title }) {
       {title}
     </Text>
   );
+}
+
+async function deleteTags(items) {
+  for (let tag of items) {
+    if (tag.noteIds.includes(editorStore.get().session.id))
+      await editorStore.clearSession();
+    await db.tags.remove(tag.id);
+  }
+  showToast("success", `${pluralize(items.length, "tag", "tags")} deleted`);
+  tagStore.refresh();
+  noteStore.refresh();
 }
