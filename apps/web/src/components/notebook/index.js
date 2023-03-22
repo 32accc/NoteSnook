@@ -31,6 +31,7 @@ import { showToast } from "../../utils/toast";
 import { Multiselect } from "../../common/multi-select";
 import { pluralize } from "../../utils/string";
 import { confirm } from "../../common/dialog-controller";
+import { store as selectionStore } from "../../stores/selection-store";
 
 function Notebook(props) {
   const { item, index, totalNotes, date, simplified } = props;
@@ -50,6 +51,14 @@ function Notebook(props) {
       body={notebook.description}
       index={index}
       menu={{ items: menuItems, extraData: { notebook } }}
+      onKeyPress={async (e) => {
+        if (e.key === "Delete") {
+          let selectedItems = selectionStore
+            .get()
+            .selectedItems.filter((i) => i.type === item.type && i !== item);
+          await Multiselect.moveNotebooksToTrash([item, ...selectedItems]);
+        }
+      }}
       footer={
         isCompact ? (
           <>
