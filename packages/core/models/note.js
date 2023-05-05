@@ -77,6 +77,10 @@ export default class Note {
     return this._note.dateModified;
   }
 
+  get expiryDate() {
+    return this._note.expiryDate;
+  }
+
   /**
    *
    * @param {"html"|"md"|"txt"} format - Format to export into
@@ -151,7 +155,8 @@ export default class Note {
       title: this._note.title + " (Copy)",
       dateEdited: null,
       dateCreated: null,
-      dateModified: null
+      dateModified: null,
+      expiryDate: null
     });
   }
 
@@ -192,6 +197,10 @@ export default class Note {
       await this._db.notes.add(this._note);
     } else console.error("This note is not tagged by the specified tag.", tag);
     await this._db.tags.untag(tag, this._note.id);
+  }
+
+  async setExpiryDate(expiryDate) {
+    this._note.expiryDate = expiryDate;
   }
 
   _toggle(prop) {
