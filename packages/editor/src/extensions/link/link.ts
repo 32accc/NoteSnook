@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import { markInputRule } from "@tiptap/core";
 import TiptapLink from "@tiptap/extension-link";
+import { showLinkPopup } from "./popup";
 
 const linkRegex = /(?:__|[*#])|\[(.*?)\]\(.*?\)/gm;
 const regExp = /\((.*?)\)/;
@@ -33,5 +34,13 @@ export const Link = TiptapLink.extend({
         })
       })
     ];
+  },
+  addKeyboardShortcuts() {
+    return {
+      "Ctrl-k": ({ editor }) => {
+        showLinkPopup({ editor });
+        return true;
+      }
+    };
   }
 });
