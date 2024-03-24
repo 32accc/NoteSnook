@@ -77,7 +77,9 @@ export function ColorTool(props: ColorToolProps) {
       }}
       onOpen={() => setIsOpen((s) => !s)}
       toggled={isOpen}
-      onClick={() => onColorChange(activeColor)}
+      onClick={() => {
+        return onColorChange(activeColor);
+      }}
     >
       <PopupWrapper
         isOpen={isOpen}
@@ -130,11 +132,21 @@ export function Highlight(props: ToolProps) {
       cacheKey="highlight"
       activeColor={editor.getAttributes("textStyle").backgroundColor}
       title={"Background color"}
-      onColorChange={(color) =>
-        color
+      onColorChange={(color) => {
+        if (
+          !color &&
+          editor.current?.state.tr.selection.$to.parentOffset === 0
+        ) {
+          return editor.current
+            .chain()
+            .setMark("textStyle", { backgroundColor: null })
+            .run();
+        }
+
+        return color
           ? editor.current?.chain().focus().setHighlight(color).run()
-          : editor.current?.chain().focus().unsetHighlight().run()
-      }
+          : editor.current?.chain().focus().unsetHighlight().run();
+      }}
     />
   );
 }
@@ -147,11 +159,21 @@ export function TextColor(props: ToolProps) {
       cacheKey={"textColor"}
       activeColor={editor.getAttributes("textStyle").color}
       title="Text color"
-      onColorChange={(color) =>
-        color
+      onColorChange={(color) => {
+        if (
+          !color &&
+          editor.current?.state.tr.selection.$to.parentOffset === 0
+        ) {
+          return editor.current
+            .chain()
+            .setMark("textStyle", { color: null })
+            .run();
+        }
+
+        return color
           ? editor.current?.chain().focus().setColor(color).run()
-          : editor.current?.chain().focus().unsetColor().run()
-      }
+          : editor.current?.chain().focus().unsetColor().run();
+      }}
     />
   );
 }
