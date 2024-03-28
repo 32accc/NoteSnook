@@ -33,16 +33,20 @@ export function LinkPopup(props: LinkPopupProps) {
   const { link: _link, isEditing = false, onDone, onClose } = props;
   const link = useRefValue(_link);
 
+  const executeLinkOperation = (e?: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e?.key === "Enter" || e?.type === "click") {
+      if (!link.current) return;
+      onDone(link.current);
+    }
+  };
+
   return (
     <Popup
       title={isEditing ? "Edit link" : "Insert link"}
       onClose={onClose}
       action={{
         title: isEditing ? "Save edits" : "Insert link",
-        onClick: () => {
-          if (!link.current) return;
-          onDone(link.current);
-        }
+        onClick: executeLinkOperation
       }}
     >
       <Flex sx={{ p: 1, flexDirection: "column", width: ["auto", 250] }}>
@@ -55,6 +59,7 @@ export function LinkPopup(props: LinkPopupProps) {
             onChange={(e) =>
               (link.current = { ...link.current, text: e.target.value })
             }
+            onKeyDown={executeLinkOperation}
           />
         )}
         <Input
@@ -65,6 +70,7 @@ export function LinkPopup(props: LinkPopupProps) {
           onChange={(e) =>
             (link.current = { ...link.current, href: e.target.value })
           }
+          onKeyDown={executeLinkOperation}
         />
       </Flex>
     </Popup>

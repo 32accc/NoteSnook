@@ -57,6 +57,7 @@ export function AddLink(props: ToolProps) {
 
   const onDone = useCallback(
     (link: LinkDefinition) => {
+      console.log("onDOne");
       const { href, text, isImage } = link;
       if (!href) return;
 
