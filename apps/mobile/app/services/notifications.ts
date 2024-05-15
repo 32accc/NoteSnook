@@ -37,11 +37,12 @@ import { Platform } from "react-native";
 import { db, setupDatabase } from "../common/database";
 import { MMKV } from "../common/database/mmkv";
 import { presentDialog } from "../components/dialog/functions";
+import { useTabStore } from "../screens/editor/tiptap/use-tab-store";
 import { editorState } from "../screens/editor/tiptap/utils";
 import { useRelationStore } from "../stores/use-relation-store";
 import { useReminderStore } from "../stores/use-reminder-store";
 import { useSettingStore } from "../stores/use-setting-store";
-import { eOnLoadNote } from "../utils/events";
+import { useUserStore } from "../stores/use-user-store";
 import { tabBarRef } from "../utils/global-refs";
 import { convertNoteToText } from "../utils/note-to-text";
 import { sleep } from "../utils/time";
@@ -49,8 +50,6 @@ import { DDS } from "./device-detection";
 import { eSendEvent } from "./event-manager";
 import Navigation from "./navigation";
 import SettingsService from "./settings";
-import { useUserStore } from "../stores/use-user-store";
-import { useTabStore } from "../screens/editor/tiptap/use-tab-store";
 
 let pinned: DisplayedNotification[] = [];
 
@@ -429,7 +428,7 @@ async function loadNote(id: string, jump: boolean) {
   if (tab !== undefined) {
     useTabStore.getState().focusTab(tab);
   } else {
-    useTabStore.getState().focusPreviewTab(id, {
+    useTabStore.getState().updateTab(useTabStore.getState().currentTab, {
       noteId: id,
       readonly: note.readonly,
       noteLocked: isLocked

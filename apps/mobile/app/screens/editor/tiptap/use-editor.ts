@@ -297,6 +297,7 @@ export const useEditor = (
 
         if (!locked) {
           DatabaseLogger.log(`Saving note: ${id}...`);
+          console.log("SAVE DATA", noteData);
           id = await db.notes?.add({ ...noteData });
           saved = true;
           DatabaseLogger.log(`Note saved: ${id}...`);
@@ -354,7 +355,17 @@ export const useEditor = (
           clearTimeout(saveTimer);
         }
 
-        if (id && useTabStore.getState().getTabForNote(id) === tabId) {
+        if (id) {
+          useTabStore.getState().forEachNoteTab(id, (tab) => {
+            if (tab.id !== tabId) {
+              useTabStore.getState().updateTab(tab.id, {
+                needsRefresh: true
+              });
+            }
+          });
+        }
+
+        if (id && useTabStore.getState().getTab(tabId)?.noteId === id) {
           note = (await db.notes?.note(id)) as Note;
           await commands.setStatus(
             getFormattedDate(note.dateEdited, "date-time"),
@@ -410,7 +421,22 @@ export const useEditor = (
         };
       } else if (note.contentId) {
         const rawContent = await db.content?.get(note.contentId);
-        if (rawContent && !isDeleted(rawContent) && !rawContent.locked) {
+        if (rawContent && isEncryptedContent(rawContent)) {
+          const unlocked = await unlockVault({
+            title: "Unlock vault to load note",
+            paragraph: "This note is locked, unlock to load content",
+            context: "global"
+          });
+          if (!unlocked) return;
+          const decryptedContent = await db.vault?.decryptContent(rawContent);
+          if (decryptedContent) {
+            currentContents.current[note.id] = {
+              data: decryptedContent.data,
+              type: decryptedContent.type,
+              noteId: note.id
+            };
+          }
+        } else if (rawContent && !isDeleted(rawContent) && !rawContent.locked) {
           currentContents.current[note.id] = {
             data: rawContent.data,
             type: rawContent.type
@@ -428,7 +454,8 @@ export const useEditor = (
       newNote?: boolean;
       tabId?: number;
       blockId?: string;
-      presistTab?: boolean;
+      newTab?: boolean;
+      refresh?: boolean;
     }) => {
       loadNoteMutex.runExclusive(async () => {
         if (!event) return;
@@ -476,29 +503,42 @@ export const useEditor = (
           const tabLocked =
             isLockedNote && !(event.item as NoteWithContent).content;
 
-          let tabId =
-            event.tabId || useTabStore.getState().getTabForNote(event.item.id);
+          let tabId = event.tabId;
           if (tabId === undefined) tabId = useTabStore.getState().currentTab;
 
-          const isOpened =
-            useTabStore.getState().getTabForNote(event.item.id) === tabId;
+          let isOpened = false;
 
-          if (!isOpened) {
+          useTabStore.getState().forEachNoteTab(item.id, (tab) => {
+            if (tab.id === useTabStore.getState().currentTab) {
+              isOpened = true;
+            }
+          });
+
+          if (!isOpened && !event.refresh) {
             await commands.setLoading(true, tabId);
           }
 
-          useTabStore.getState().updateTab(tabId, {
-            readonly: event.item.readonly || readonly,
-            ...(isOpened
-              ? {
-                  noteId: event.item.id
-                }
-              : {
-                  locked: tabLocked,
-                  noteLocked: isLockedNote,
-                  noteId: event.item.id
-                })
-          });
+          if (event.newTab) {
+            tabId = useTabStore.getState().newTab({
+              noteId: event.item.id,
+              locked: tabLocked,
+              noteLocked: isLockedNote,
+              readonly: event.item.readonly || readonly
+            });
+          } else {
+            useTabStore.getState().updateTab(tabId, {
+              readonly: event.item.readonly || readonly,
+              ...(isOpened
+                ? {
+                    noteId: event.item.id
+                  }
+                : {
+                    locked: tabLocked,
+                    noteLocked: isLockedNote,
+                    noteId: event.item.id
+                  })
+            });
+          }
 
           useTabStore.getState().focusTab(tabId);
 
@@ -559,13 +599,12 @@ export const useEditor = (
             "Saved",
             tabId
           );
-
           await postMessage(NativeEvents.title, item.title, tabId);
           overlay(false);
           loadingState.current = currentContents.current[item.id]?.data;
 
           await postMessage(
-            NativeEvents.html,
+            event?.refresh ? NativeEvents.updatehtml : NativeEvents.html,
             currentContents.current[item.id]?.data || "",
             tabId,
             10000
@@ -613,12 +652,10 @@ export const useEditor = (
           if (!data) return;
 
           if (isDeleted(data) || isTrashItem(data)) {
-            const tabId = useTabStore.getState().getTabForNote(data.id);
-            if (tabId !== undefined) {
-              console.log("Removing tab");
-              await commands.clearContent(tabId);
-              useTabStore.getState().removeTab(tabId);
-            }
+            useTabStore.getState().forEachNoteTab(data.id, (tab) => {
+              commands.clearContent(tab.id);
+              useTabStore.getState().removeTab(tab.id);
+            });
             return;
           }
 
@@ -628,9 +665,6 @@ export const useEditor = (
               : data.id;
 
           if (!useTabStore.getState().hasTabForNote(noteId)) return;
-          const tabId = useTabStore.getState().getTabForNote(noteId) as number;
-
-          const tab = useTabStore.getState().getTab(tabId);
 
           const note =
             data.type === "note" ? data : await db.notes?.note(noteId);
@@ -643,49 +677,55 @@ export const useEditor = (
           );
 
           if (note) {
-            if (!locked && tab?.noteLocked) {
-              // Note lock removed.
-              if (tab.locked) {
-                if (useTabStore.getState().currentTab === tabId) {
-                  eSendEvent(eOnLoadNote, {
-                    item: note,
-                    forced: true
-                  });
-                } else {
-                  useTabStore.getState().updateTab(tabId, {
-                    locked: false,
-                    noteLocked: false
-                  });
+            useTabStore.getState().forEachNoteTab(note.id, (tab) => {
+              const tabId = tab.id;
+              if (!locked && tab?.noteLocked) {
+                // Note lock removed.
+                if (tab.locked) {
+                  if (useTabStore.getState().currentTab === tabId) {
+                    eSendEvent(eOnLoadNote, {
+                      item: note,
+                      forced: true
+                    });
+                  } else {
+                    useTabStore.getState().updateTab(tabId, {
+                      locked: false,
+                      noteLocked: false
+                    });
+                    commands.setLoading(true, tabId);
+                  }
+                }
+              } else if (!tab?.noteLocked && locked) {
+                // Note lock added.
+                useTabStore.getState().updateTab(tabId, {
+                  locked: true,
+                  noteLocked: true
+                });
+                if (useTabStore.getState().currentTab !== tabId) {
+                  commands.clearContent(tabId);
                   commands.setLoading(true, tabId);
                 }
               }
-            } else if (!tab?.noteLocked && locked) {
-              // Note lock added.
-              useTabStore.getState().updateTab(tabId, {
-                locked: true,
-                noteLocked: true
-              });
-              if (useTabStore.getState().currentTab !== tabId) {
-                commands.clearContent(tabId);
-                commands.setLoading(true, tabId);
+
+              if (currentNotes.current[noteId]?.title !== note.title) {
+                postMessage(NativeEvents.title, note.title, tabId);
               }
-            }
+              commands.setTags(note);
+              if (
+                currentNotes.current[noteId]?.dateEdited !== note.dateEdited
+              ) {
+                commands.setStatus(
+                  getFormattedDate(note.dateEdited, "date-time"),
+                  "Saved",
+                  tabId as number
+                );
+              }
 
-            if (currentNotes.current[noteId]?.title !== note.title) {
-              postMessage(NativeEvents.title, note.title, tabId);
-            }
-            commands.setTags(note);
-            if (currentNotes.current[noteId]?.dateEdited !== note.dateEdited) {
-              commands.setStatus(
-                getFormattedDate(note.dateEdited, "date-time"),
-                "Saved",
-                tabId as number
-              );
-            }
+              console.log("readonly state changed...", note.readonly);
 
-            console.log("readonly state changed...", note.readonly);
-            useTabStore.getState().updateTab(tabId, {
-              readonly: note.readonly
+              useTabStore.getState().updateTab(tabId, {
+                readonly: note.readonly
+              });
             });
           }
 
@@ -697,20 +737,34 @@ export const useEditor = (
             if (locked && isEncryptedContent(data)) {
               const decryptedContent = await db.vault?.decryptContent(data);
               if (!decryptedContent) {
-                useTabStore.getState().updateTab(tabId, {
-                  locked: true,
-                  noteLocked: true
+                useTabStore.getState().forEachNoteTab(note.id, (tab) => {
+                  const tabId = tab.id;
+
+                  useTabStore.getState().updateTab(tabId, {
+                    locked: true,
+                    noteLocked: true
+                  });
+                  if (useTabStore.getState().currentTab !== tabId) {
+                    commands.clearContent(tabId);
+                    commands.setLoading(true, tabId);
+                  }
                 });
-                if (useTabStore.getState().currentTab !== tabId) {
-                  commands.clearContent(tabId);
-                  commands.setLoading(true, tabId);
-                }
               } else {
-                await postMessage(
-                  NativeEvents.updatehtml,
-                  decryptedContent.data,
-                  tabId
-                );
+                useTabStore.getState().forEachNoteTab(note.id, (tab) => {
+                  const tabId = tab.id;
+                  if (tab.id !== useTabStore.getState().currentTab) {
+                    useTabStore.getState().updateTab(tabId, {
+                      needsRefresh: true
+                    });
+                  } else {
+                    postMessage(
+                      NativeEvents.updatehtml,
+                      decryptedContent.data,
+                      tabId
+                    );
+                  }
+                });
+
                 currentContents.current[note.id] = decryptedContent;
               }
             } else {
@@ -719,7 +773,18 @@ export const useEditor = (
                 return;
               }
               lastContentChangeTime.current[note.id] = note.dateEdited;
-              await postMessage(NativeEvents.updatehtml, _nextContent, tabId);
+
+              useTabStore.getState().forEachNoteTab(note.id, (tab) => {
+                const tabId = tab.id;
+                if (tab.id !== useTabStore.getState().currentTab) {
+                  useTabStore.getState().updateTab(tabId, {
+                    needsRefresh: true
+                  });
+                } else {
+                  postMessage(NativeEvents.updatehtml, _nextContent, tabId);
+                }
+              });
+
               if (!isEncryptedContent(data)) {
                 currentContents.current[note.id] =
                   data as UnencryptedContentItem;
