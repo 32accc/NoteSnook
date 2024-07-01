@@ -28,29 +28,52 @@ import {
 } from "react-native";
 import { SwiperFlatList } from "react-native-swiper-flatlist";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { getElevationStyle } from "../../utils/elevation";
-import useGlobalSafeAreaInsets from "../../hooks/use-global-safe-area-insets";
+import { eSendEvent } from "../../services/event-manager";
+import Navigation, { NavigationProps } from "../../services/navigation";
 import SettingsService from "../../services/settings";
 import { useSettingStore } from "../../stores/use-setting-store";
+import { getElevationStyle } from "../../utils/elevation";
+import { eOpenLoginDialog, eOpenPremiumDialog } from "../../utils/events";
 import { SIZE } from "../../utils/size";
+import { AuthMode } from "../auth";
 import { Button } from "../ui/button";
 import Heading from "../ui/typography/heading";
 import Paragraph from "../ui/typography/paragraph";
-import Navigation from "../../services/navigation";
-import { eOpenLoginDialog } from "../../utils/events";
-import { AuthMode } from "../auth";
-import { eSendEvent } from "../../services/event-manager";
 
-const Intro = ({ navigation }) => {
+type IntroItem = {
+  headings?: string[];
+  body?: string;
+  testimonial?: string;
+  link?: string;
+  user?: string;
+};
+
+const introItems: IntroItem[] = [
+  {
+    headings: ["Open source.", "End to end encrypted.", "Private."],
+    body: "Write notes with freedom, no spying, no tracking."
+  },
+  {
+    headings: ["Privacy for everyone", "— not just the", "privileged few"],
+    body: "Your privacy matters to us, no matter who you are. In a world where everyone is trying to spy on you, Notesnook encrypts all your data before it leaves your device. With Notesnook no one can ever sell your data again."
+  },
+  {
+    testimonial:
+      "You simply cannot get any better of a note taking app than @notesnook. The UI is clean and slick, it is feature rich, encrypted, reasonably priced (esp. for students & educators) & open source",
+    link: "https://twitter.com/andrewsayer/status/1637817220113002503",
+    user: "@andrewsayer on Twitter"
+  }
+];
+
+const Intro = ({ navigation }: NavigationProps<"Intro">) => {
   const { colors } = useThemeColors();
   const isTelemetryEnabled = useSettingStore(
     (state) => state.settings.telemetry
   );
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const deviceMode = useSettingStore((state) => state.deviceMode);
-  const insets = useGlobalSafeAreaInsets();
   const renderItem = React.useCallback(
-    ({ item }) => (
+    ({ item }: { item: IntroItem }) => (
       <View
         style={{
           justifyContent: "center",
@@ -105,17 +128,18 @@ const Intro = ({ navigation }) => {
 
           {item.body ? <Paragraph size={SIZE.sm}>{item.body}</Paragraph> : null}
 
-          {item.tesimonial ? (
+          {item.testimonial ? (
             <Paragraph
               style={{
                 fontStyle: "italic",
                 fontSize: SIZE.lg
               }}
               onPress={() => {
+                if (!item.link) return;
                 Linking.openURL(item.link);
               }}
             >
-              {item.tesimonial} — {item.user}
+              {item.testimonial} — {item.user}
             </Paragraph>
           ) : null}
         </View>
@@ -130,22 +154,23 @@ const Intro = ({ navigation }) => {
       style={{
         width: "100%"
       }}
+      contentContainerStyle={{
+        minHeight: "100%"
+      }}
     >
       <View
         style={{
           width: deviceMode !== "mobile" ? width / 2 : "100%",
           backgroundColor: colors.secondary.background,
-          marginBottom: 20,
           borderBottomWidth: 1,
           borderBottomColor: colors.primary.border,
           alignSelf: deviceMode !== "mobile" ? "center" : undefined,
-          borderWidth: deviceMode !== "mobile" ? 1 : null,
-          borderColor: deviceMode !== "mobile" ? colors.primary.border : null,
-          borderRadius: deviceMode !== "mobile" ? 20 : null,
-          marginTop: deviceMode !== "mobile" ? 50 : null,
-          paddingTop: insets.top + 10,
-          paddingBottom: insets.top + 10,
-          minHeight: height * 0.7
+          borderWidth: deviceMode !== "mobile" ? 1 : undefined,
+          borderColor:
+            deviceMode !== "mobile" ? colors.primary.border : undefined,
+          borderRadius: deviceMode !== "mobile" ? 20 : undefined,
+          marginTop: deviceMode !== "mobile" ? 50 : undefined,
+          flexGrow: 2
         }}
       >
         <SwiperFlatList
@@ -155,26 +180,7 @@ const Intro = ({ navigation }) => {
           index={0}
           useReactNativeGestureHandler={true}
           showPagination
-          data={[
-            {
-              headings: ["Open source.", "End to end encrypted.", "Private."],
-              body: "Write notes with freedom, no spying, no tracking."
-            },
-            {
-              headings: [
-                "Privacy for everyone",
-                "— not just the",
-                "privileged few"
-              ],
-              body: "Your privacy matters to us, no matter who you are. In a world where everyone is trying to spy on you, Notesnook encrypts all your data before it leaves your device. With Notesnook no one can ever sell your data again."
-            },
-            {
-              tesimonial:
-                "You simply cannot get any better of a note taking app than @notesnook. The UI is clean and slick, it is feature rich, encrypted, reasonably priced (esp. for students & educators) & open source",
-              link: "https://twitter.com/andrewsayer/status/1637817220113002503",
-              user: "@andrewsayer on Twitter"
-            }
-          ]}
+          data={introItems}
           paginationActiveColor={colors.primary.accent}
           paginationStyleItem={{
             width: 10,
@@ -190,18 +196,19 @@ const Intro = ({ navigation }) => {
       <View
         style={{
           width: "100%",
-          justifyContent: "center",
-          minHeight: height * 0.3
+          paddingHorizontal: 16,
+          gap: 12,
+          paddingVertical: 16
         }}
       >
         <Button
-          width={250}
-          onPress={async () => {
+          width="100%"
+          onPress={() => {
             eSendEvent(eOpenLoginDialog, AuthMode.welcomeSignup);
             setTimeout(() => {
-              SettingsService.set({
-                introCompleted: true
-              });
+              // SettingsService.set({
+              //   introCompleted: true
+              // });
               Navigation.replace("Notes", {
                 canGoBack: false
               });
@@ -210,12 +217,28 @@ const Intro = ({ navigation }) => {
           style={{
             paddingHorizontal: 24,
             alignSelf: "center",
-            ...getElevationStyle(5),
-            borderRadius: 100
+            ...getElevationStyle(5)
           }}
           fontSize={SIZE.md}
           type="accent"
           title="Get started"
+        />
+
+        <Button
+          width="100%"
+          title="I already have an account"
+          type="secondary"
+          onPress={() => {
+            eSendEvent(eOpenLoginDialog, AuthMode.login);
+            setTimeout(() => {
+              // SettingsService.set({
+              //   introCompleted: true
+              // });
+              Navigation.replace("Notes", {
+                canGoBack: false
+              });
+            }, 1000);
+          }}
         />
 
         <TouchableOpacity
@@ -223,12 +246,12 @@ const Intro = ({ navigation }) => {
           style={{
             flexDirection: "row",
             alignSelf: "center",
-            width: "90%",
             marginBottom: 12,
             paddingHorizontal: 12,
             justifyContent: "center",
             padding: 12,
-            maxWidth: 500
+            maxWidth: 500,
+            gap: 5
           }}
           onPress={() => {
             SettingsService.set({ telemetry: !isTelemetryEnabled });
@@ -244,13 +267,7 @@ const Intro = ({ navigation }) => {
             }
           />
 
-          <Paragraph
-            style={{
-              flexShrink: 1,
-              marginLeft: 6
-            }}
-            size={SIZE.xs}
-          >
+          <Paragraph size={SIZE.xs}>
             Help improve Notesnook by sending completely anonymized{" "}
             <Heading size={SIZE.xs}>private analytics and bug reports.</Heading>
           </Paragraph>
