@@ -33,7 +33,7 @@ import Navigation, { NavigationProps } from "../../services/navigation";
 import SettingsService from "../../services/settings";
 import { useSettingStore } from "../../stores/use-setting-store";
 import { getElevationStyle } from "../../utils/elevation";
-import { eOpenLoginDialog, eOpenPremiumDialog } from "../../utils/events";
+import { eOpenLoginDialog } from "../../utils/events";
 import { SIZE } from "../../utils/size";
 import { AuthMode } from "../auth";
 import { Button } from "../ui/button";
@@ -206,9 +206,9 @@ const Intro = ({ navigation }: NavigationProps<"Intro">) => {
           onPress={() => {
             eSendEvent(eOpenLoginDialog, AuthMode.welcomeSignup);
             setTimeout(() => {
-              // SettingsService.set({
-              //   introCompleted: true
-              // });
+              SettingsService.set({
+                introCompleted: true
+              });
               Navigation.replace("Notes", {
                 canGoBack: false
               });
@@ -231,9 +231,9 @@ const Intro = ({ navigation }: NavigationProps<"Intro">) => {
           onPress={() => {
             eSendEvent(eOpenLoginDialog, AuthMode.login);
             setTimeout(() => {
-              // SettingsService.set({
-              //   introCompleted: true
-              // });
+              SettingsService.set({
+                introCompleted: true
+              });
               Navigation.replace("Notes", {
                 canGoBack: false
               });
