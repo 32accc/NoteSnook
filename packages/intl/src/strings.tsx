@@ -662,5 +662,15 @@ $headline$: Use starting line of the note as title.`,
   pdfLocked: () => t`PDF is password protected`,
   pdfLockedDesc: () =>
     t`Please enter the password to unlock the PDF and view the content.`,
-  enterPassword: () => t`Enter password`
+  enterPassword: () => t`Enter password`,
+  failedToDownloadFile: () => t`Failed to download file`,
+  zipping: () => t`Zipping`,
+  savingZipFile: () => t`Saving zip file`,
+  failedToZipFiles: () => t`Failed to zip files`,
+  fileVerificationFailed: () => t`Uploaded file verification failed.`,
+  fileLengthError: () =>
+    t`File length is 0. Please upload this file again from the attachment manager.`,
+  fileLengthMismatch: (expectedSize: number, currentSize: number) =>
+    t`File length mismatch. Expected ${expectedSize} but got ${currentSize} bytes. Please upload this file again from the attachment manager.`,
+  failedToResolvedDownloadUrl: () => t`Failed to resolve download url`
 };

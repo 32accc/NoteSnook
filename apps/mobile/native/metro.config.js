@@ -29,7 +29,6 @@ mergedConfig.resolver = {
     "react-dom": path.join(__dirname, "../node_modules/react-dom"),
     "@notesnook":  path.join(__dirname, "../../../packages"),
     "@notifee/react-native": path.join(__dirname, "../node_modules/@ammarahmed/notifee-react-native"),
-
   },
   resolveRequest: (context, moduleName, platform) => {
     if (moduleName === "node:crypto") {
@@ -53,7 +52,7 @@ mergedConfig.resolver = {
       };
     }
     return context.resolveRequest(context, moduleName, platform);
-  }
+  },
 };
 
 module.exports = mergedConfig;

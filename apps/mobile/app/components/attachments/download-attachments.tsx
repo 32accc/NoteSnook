@@ -33,6 +33,7 @@ import { useThemeColors } from "@notesnook/theme";
 import { FlatList } from "react-native-actions-sheet";
 import { AttachmentItem } from "./attachment-item";
 import { Attachment, VirtualizedGrouping } from "@notesnook/core";
+import { strings } from "@notesnook/intl";
 
 const DownloadAttachments = ({
   close,
@@ -102,12 +103,12 @@ const DownloadAttachments = ({
     const downloadedAttachmentsCount =
       attachments?.placeholders?.length - failedResults().length;
     if (downloadedAttachmentsCount === 0)
-      return "Failed to download all attachments";
-    return `Successfully downloaded ${downloadedAttachmentsCount}/${
-      attachments?.placeholders.length
-    } attachments as a zip file at ${
+      return strings.attachmentsDownloadFailed(downloadedAttachmentsCount);
+    return strings.attachmentsDownloaded(
+      downloadedAttachmentsCount,
+      attachments.placeholders.length,
       Platform.OS === "android" ? "the selected folder" : "Notesnook/downloads"
-    }`;
+    );
   }
 
   return (
@@ -121,10 +122,16 @@ const DownloadAttachments = ({
     >
       <Heading>
         {downloading
-          ? "Downloading attachments"
+          ? `${
+              strings.network.downloading
+            } ${strings.dataTypesPlural.attachment()}`
           : result?.size
-          ? "Downloaded attachments"
-          : "Download attachments"}
+          ? `${
+              strings.network.downloaded
+            } ${strings.dataTypesPlural.attachment()}`
+          : `${
+              strings.network.download
+            } ${strings.dataTypesPlural.attachment()}`}
       </Heading>
 
       {downloading ? (
@@ -149,8 +156,7 @@ const DownloadAttachments = ({
             textAlign: "center"
           }}
         >
-          Are you sure you want to download all attachments
-          {isNote ? " of this note?" : "?"}
+          {strings.downloadAllAttachmentsConfirmation(isNote ? 1 : 2)}
         </Paragraph>
       )}
 
@@ -198,7 +204,7 @@ const DownloadAttachments = ({
             }}
           >
             <Paragraph color={colors.secondary.paragraph}>
-              No downloads in progress.
+              {strings.noDownloads()}
             </Paragraph>
           </View>
         }
@@ -227,7 +233,7 @@ const DownloadAttachments = ({
             close?.();
           }}
           type="accent"
-          title="Done"
+          title={strings.done()}
         />
       ) : !downloading ? (
         <View
@@ -247,7 +253,7 @@ const DownloadAttachments = ({
               close?.();
             }}
             type="secondary"
-            title="No"
+            title={strings.no()}
           />
           <Button
             style={{
@@ -257,7 +263,7 @@ const DownloadAttachments = ({
             }}
             onPress={onDownload}
             type="accent"
-            title="Yes"
+            title={strings.yes()}
           />
         </View>
       ) : (
@@ -269,7 +275,7 @@ const DownloadAttachments = ({
           }}
           onPress={cancel}
           type="error"
-          title="Cancel"
+          title={strings.cancel()}
         />
       )}
     </View>
