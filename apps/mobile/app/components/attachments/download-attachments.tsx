@@ -50,7 +50,7 @@ const DownloadAttachments = ({
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState({
     value: 0,
-    statusText: "Download started... Please wait"
+    statusText: strings.donwloadStarted()
   });
   const [result, setResult] = useState(new Map());
   const canceled = useRef(false);

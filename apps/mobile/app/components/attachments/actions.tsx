@@ -167,7 +167,7 @@ const Actions = ({
               eSendEvent(eDBItemUpdate, attachment.id);
             }
           },
-          positiveText: "Rename"
+          positiveText: strings.rename()
         });
       },
       icon: "form-textbox"
