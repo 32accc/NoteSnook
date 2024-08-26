@@ -234,11 +234,34 @@ export const CodeBlock = Node.create<CodeBlockOptions>({
         },
       toggleCodeBlock:
         (attributes) =>
-        ({ commands }) => {
-          return commands.toggleNode(this.name, "paragraph", {
-            ...attributes,
-            id: createCodeblockId()
+        ({ commands, state }) => {
+          const { from, to } = state.selection;
+
+          let hasParagraph = false;
+
+          state.doc.nodesBetween(from, to, (node) => {
+            if (node.type.name === "paragraph") {
+              hasParagraph = true;
+            }
           });
+
+          if (hasParagraph) {
+            return commands.insertContent({
+              type: this.name,
+              attrs: {
+                ...attributes,
+                id: createCodeblockId()
+              },
+              content: [
+                {
+                  type: "text",
+                  text: state.doc.textBetween(from, to, "\n")
+                }
+              ]
+            });
+          } else {
+            return commands.clearNodes();
+          }
         },
       changeCodeBlockIndentation:
         (options) =>
