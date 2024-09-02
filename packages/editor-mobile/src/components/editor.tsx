@@ -51,6 +51,7 @@ import StatusBar from "./statusbar";
 import Tags from "./tags";
 import TiptapEditorWrapper from "./tiptap";
 import Title from "./title";
+import { strings } from "@notesnook/intl";
 
 globalThis.toBlobURL = toBlobURL as typeof globalThis.toBlobURL;
 
@@ -196,6 +197,7 @@ const Tiptap = ({
       copyToClipboard: (text) => {
         globalThis.editorControllers[tab.id]?.copyToClipboard(text);
       },
+      placeholder: strings.startWritingNote(),
       onSelectionUpdate: () => {
         if (tabRef.current.noteId) {
           const noteId = tabRef.current.noteId;
@@ -239,7 +241,7 @@ const Tiptap = ({
   const update = useCallback(() => {
     setTick((tick) => tick + 1);
     globalThis.editorControllers[tabRef.current.id]?.setTitlePlaceholder(
-      "Note title"
+      strings.noteTitle()
     );
     setTimeout(() => {
       editorControllers[tabRef.current.id]?.setLoading(false);
@@ -455,7 +457,7 @@ const Tiptap = ({
               userSelect: "none"
             }}
           >
-            Your changes could not be saved.
+            {strings.changesNotSaved()}
           </p>
           <p
             style={{
@@ -468,7 +470,7 @@ const Tiptap = ({
               fontSize: "0.9rem"
             }}
           >
-            It seems that your changes could not be saved. What to do next:
+            {strings.changesNotSavedDesc()}
           </p>
 
           <p
@@ -480,13 +482,10 @@ const Tiptap = ({
           >
             <ol>
               <li>
-                <p>
-                  Tap on "Dismiss" and copy the contents of your note so they
-                  are not lost.
-                </p>
+                <p>{strings.changesNotSavedStep1()}</p>
               </li>
               <li>
-                <p>Restart the app.</p>
+                <p>{strings.changesNotSavedStep2()}</p>
               </li>
             </ol>
           </p>
@@ -524,7 +523,7 @@ const Tiptap = ({
                 userSelect: "none"
               }}
             >
-              Dismiss
+              {strings.dismiss()}
             </p>
           </button>
         </div>
@@ -601,7 +600,7 @@ const Tiptap = ({
                       userSelect: "none"
                     }}
                   >
-                    This note is locked.
+                    {strings.thisNoteLocked()}
                   </p>
 
                   <form
@@ -622,7 +621,7 @@ const Tiptap = ({
                     }}
                   >
                     <input
-                      placeholder="Enter password"
+                      placeholder={strings.enterPassword()}
                       ref={controller.passwordInputRef}
                       name="password"
                       type="password"
@@ -667,7 +666,7 @@ const Tiptap = ({
                           userSelect: "none"
                         }}
                       >
-                        Unlock note
+                        {strings.unlockNote()}
                       </p>
                     </button>
 
@@ -701,7 +700,7 @@ const Tiptap = ({
                             userSelect: "none"
                           }}
                         >
-                          Enable biometric unlocking
+                          {strings.vaultEnableBiometrics()}
                         </p>
                       </div>
                     ) : null}
@@ -739,7 +738,7 @@ const Tiptap = ({
                           userSelect: "none"
                         }}
                       >
-                        Unlock with biometrics
+                        {strings.unlockWithBiometrics()}
                       </p>
                     </button>
                   ) : null}

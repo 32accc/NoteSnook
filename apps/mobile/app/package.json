@@ -41,7 +41,10 @@
     "@trpc/react-query": "10.38.3",
     "@trpc/server": "10.38.3",
     "kysely": "^0.26.3",
-    "pathe": "1.1.2"
+    "pathe": "1.1.2",
+    "react-native-format-currency": "0.0.5",
+    "@lingui/react": "4.11.2",
+    "@lingui/core": "4.11.2"
   },
   "sideEffects": false
 }

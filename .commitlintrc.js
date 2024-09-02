@@ -34,7 +34,8 @@ const SCOPES = [
   "common",
   "global",
   "docs",
-  "themebuilder"
+  "themebuilder",
+  "intl"
 ];
 
 module.exports = {

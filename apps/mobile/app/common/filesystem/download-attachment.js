@@ -32,6 +32,7 @@ import { DatabaseLogger, db } from "../database";
 import Storage from "../database/storage";
 import { createCacheDir, exists } from "./io";
 import { cacheDir, copyFileAsync, releasePermissions } from "./utils";
+import { strings } from "@notesnook/intl";
 
 export const FileDownloadStatus = {
   Success: 1,
@@ -96,9 +97,9 @@ export async function downloadAttachments(
       }
       onProgress?.(
         i + 1 / attachments.length,
-        `Downloading attachments (${i + 1}/${
-          attachments.length
-        })... Please wait`
+        strings.downloadingAttachments`${strings.downloadingAttachments()} (${
+          i + 1
+        }/${attachments.length})... ${strings.pleaseWait()}`
       );
       // Download to cache
       let uri = await downloadAttachment(hash, false, {
@@ -110,7 +111,7 @@ export async function downloadAttachments(
         RNFetchBlob.fs.unlink(zipSourceFolder).catch(console.log);
         return;
       }
-      if (!uri) throw new Error("Failed to download file");
+      if (!uri) throw new Error(strings.failedToDownloadFile());
       // Move file to the source folder we will zip eventually and rename the file to it's actual name.
       const filePath = `${zipSourceFolder}/${attachment.filename}`;
       await RNFetchBlob.fs.mv(`${cacheDir}/${uri}`, filePath);
@@ -125,7 +126,7 @@ export async function downloadAttachments(
         status: FileDownloadStatus.Fail,
         reason: e
       });
-      ToastManager.error(e, "Error downloading attachment");
+      ToastManager.error(e, strings.failedToDownloadFile());
     }
   }
   if (canceled.current) {
@@ -135,18 +136,20 @@ export async function downloadAttachments(
   if (result?.size) {
     let sub;
     try {
-      onProgress?.(0, `Zipping... Please wait`);
+      onProgress?.(0, `${strings.zipping()}... ${strings.pleaseWait()}`);
       // If all goes well, zip the notesnook-attachments folder in cache.
 
       sub = subscribe(({ progress }) => {
         onProgress(
           progress,
-          `Saving zip file (${(progress * 100).toFixed(1)}%)... Please wait`
+          `${strings.savingZipFile()} (${(progress * 100).toFixed(
+            1
+          )}%)... ${strings.pleaseWait()}`
         );
       });
       await zip(zipSourceFolder, zipOutputFile);
       sub?.remove();
-      onProgress(1, `Saving zip file... Please wait`);
+      onProgress(1, `${strings.savingZipFile()}... ${strings.pleaseWait()}`);
       if (Platform.OS === "android") {
         // Move the zip to user selected directory.
         const file = await ScopedStorage.createFile(
@@ -162,7 +165,7 @@ export async function downloadAttachments(
     } catch (e) {
       releasePermissions(outputFolder);
       sub?.remove();
-      ToastManager.error(e, "Error zipping attachments");
+      ToastManager.error(e, strings.failedToZipFiles());
     }
     // Remove source & zip file from cache.
     RNFetchBlob.fs.unlink(zipSourceFolder).catch(console.log);
@@ -253,8 +256,8 @@ export default async function downloadAttachment(
 
     if (!options.silent) {
       ToastManager.show({
-        heading: "Download successful",
-        message: filename + " downloaded",
+        heading: strings.network.downloadSuccess(),
+        message: strings.network.fileDownloaded(filename),
         type: "success"
       });
     }
@@ -264,12 +267,8 @@ export default async function downloadAttachment(
     }
     if (!options.silent) {
       presentSheet({
-        title: "File downloaded",
-        paragraph: `${filename} saved to ${
-          Platform.OS === "android"
-            ? "selected path"
-            : "File Manager/Notesnook/downloads"
-        }`,
+        title: strings.network.fileDownloaded(),
+        paragraph: strings.fileSaved(filename, Platform.OS),
         icon: "download",
         context: global ? null : attachment.hash,
         component: <ShareComponent uri={fileUri} name={filename} padding={12} />

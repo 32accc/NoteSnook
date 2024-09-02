@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import { strings } from "@notesnook/intl";
 import type { DatabaseConnection, Driver, QueryResult } from "kysely";
 import { CompiledQuery } from "kysely";
 import { QuickSQLiteConnection, open } from "react-native-quick-sqlite";
@@ -93,7 +94,7 @@ class RNSqliteConnection implements DatabaseConnection {
   constructor(private readonly db: QuickSQLiteConnection) {}
 
   streamQuery<R>(): AsyncIterableIterator<QueryResult<R>> {
-    throw new Error("wasqlite driver doesn't support streaming");
+    throw new Error(strings.streamingNotSupported());
   }
 
   async executeQuery<R>(
